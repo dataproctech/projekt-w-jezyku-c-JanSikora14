@@ -3,7 +3,7 @@
 
 typedef struct{
 char name[50];
-int doesStarts;
+int doesStart;
 int w, l, d;
 } Player;
 
