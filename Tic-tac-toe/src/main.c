@@ -5,9 +5,11 @@
     char name[50];
     int win;
     int lose;
-    int draw; 
+    int draw;
+    char symbol; // X or O
 }Player;
 void menu();
+void game(Player *player1,Player *player2);
 void startGame();
 void printBoard(char board[3][3]);
 int checkWin(char board[3][3]);
@@ -27,7 +29,7 @@ void addPlayer(const char *filename, Player *player);
         getchar();
         switch (option) {
             case 1:
-                //startGame();
+                startGame();
                 break;
             case 2: // wyswietlanie statystyk
                 break;
@@ -44,6 +46,7 @@ void addPlayer(const char *filename, Player *player);
 
     
     void startGame() {
+        const char *filename = "statistics.txt";
         Player player1, player2;
         printf("Podaj nick gracza 1: ");
         fgets(player1.name,50, stdin);
@@ -52,7 +55,6 @@ void addPlayer(const char *filename, Player *player);
             player1.win=player1.lose=player1.draw=0;
             addPlayer(filename,&player1);
         }
-
         // tutaj jakoś pobranie statystk z pliku
 
         printf("Podaj nick gracza 2: ");
@@ -63,17 +65,71 @@ void addPlayer(const char *filename, Player *player);
             addPlayer(filename,&player2);
         }
 
-
-        //game(&player1, &player2); // rozpoczynamy właściową grę
+        game(&player1, &player2); // rozpoczynamy właściową grę
 
         // po grze musimy zapisać/ nadpisać wyniki do pliku
         //updateStat();
 
 
     }
-    // void game(Player *player1,Player *player2) {
+     void game(Player *player1,Player *player2) {
+        (*player1).symbol = 'X';
+        (*player2).symbol = 'O';
+        char board[3][3] = {
+            {' ', ' ', ' '},
+            {' ', ' ', ' '},
+            {' ', ' ', ' '}
+        };
+        char tutorialBoard[3][3] = {
+            {'1', '2', '3'},
+            {'4', '5', '6'},
+            {'7', '8', '9'}
+        };
+        printBoard(tutorialBoard);
+        while(1){
+            printf("Tura gracza %s\n", player1->name);
+            printBoard(board);
+            int choice,row,col;
+            printf("Podaj komórkę (1-9): ");
+            scanf("%d", &choice);
+            getchar();
+            choice--;
+            row = choice / 3;
+            col = choice % 3;
+            if (row < 0 || row > 2 || col < 0 || col > 2 || board[row][col] != ' ') {
+                printf("Nieprawidłowy ruch! Spróbuj ponownie.\n");
+                continue;
+            }
+            board[row][col] = player1->symbol;
+            printBoard(board);
+            
+            if (checkWin(board)) {
+                printf("Gratulacje! Gracz %s wygrał!\n", player1->name);
+                player1->win++;
+                player2->lose++;
+                if ((*player1).symbol == 'X') {
+                    (*player1).symbol = 'O';
+                    (*player2).symbol = 'X';
+                }
+                else {
+                    (*player1).symbol = 'X';
+                    (*player2).symbol = 'O';
+                }
+                break;
+            }
+            if (checkDraw(board)) {
+                printf("Remis!\n");
+                player1->draw++;
+                player2->draw++;
+                break;
+            }
 
-    // }
+            // zamiana graczy
+            Player *temp = player1;
+            player1 = player2;
+            player2 = temp;   
+        }
+     }
     void printBoard(char board[3][3]) { //tutaj niby c tworzy kopie boardu, chyba trzeba użyc wskaźnika, jak nie używamy wskaźnika to nie zmienimy oryginalnej tablicy
         printf("\n  1 2 3\n");
         for (int i = 0; i < 3; i++) {
@@ -86,6 +142,7 @@ void addPlayer(const char *filename, Player *player);
         }
         printf("\n");
     }
+
     int checkWin(char board[3][3]) {
         for (int i=0;i<3;i++) {
             for (int j=0;j<3;j++) {
@@ -106,7 +163,9 @@ void addPlayer(const char *filename, Player *player);
         if (board[0][2] != ' ' &&
         board[0][2] == board[1][1] && board[1][1] == board[2][0]){
         return 1;}
+        return 0;
     }
+
     int checkDraw(char board[3][3]) {
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++)
@@ -155,4 +214,3 @@ int main() {
 
     return 0;
 }
-
