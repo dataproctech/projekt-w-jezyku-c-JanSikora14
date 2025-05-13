@@ -7,7 +7,13 @@
     int lose;
     int draw; 
 }Player;
-
+void menu();
+void startGame();
+void printBoard(char board[3][3]);
+int checkWin(char board[3][3]);
+int checkDraw(char board[3][3]);
+int findPlayer(const char *filename, const char *szukany_nick, Player *player);
+void addPlayer(const char *filename, Player *player);
     void menu() {
         
         int option;
