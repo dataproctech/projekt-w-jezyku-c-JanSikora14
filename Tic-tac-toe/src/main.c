@@ -16,33 +16,39 @@ int checkWin(char board[3][3]);
 int checkDraw(char board[3][3]);
 int findPlayer(const char *filename, const char *szukany_nick, Player *player);
 void addPlayer(const char *filename, Player *player);
+void showStatistics(const char *filename);
+void updateStat(const char *filename, Player *player);
+void resetStat(const char *filename);
     void menu() {
-        
-        int option;
-        while (1) {
+    int option;
+    while (1) {
         printf("-----MENU GRY----- \n");
-        printf("1.Rozpocznij grę.\n");
-        printf("2.Wyświetl statystyki \n");
-        printf("3.Wyjdź z gry \n");
-        printf("Wybierz opcje:");
-        scanf("%d",&option);
-        getchar();
+        printf("1. Rozpocznij grę\n");
+        printf("2. Wyświetl statystyki\n");
+        printf("3. Zresetuj statystyki\n");
+        printf("4. Wyjdź z gry\n");
+        printf("Wybierz opcję: ");
+        scanf("%d", &option);
+        getchar(); // żeby przechwycić ENTER
+
         switch (option) {
             case 1:
                 startGame();
                 break;
-            case 2: // wyswietlanie statystyk
+            case 2:
+                showStatistics("statistics.txt");
                 break;
             case 3:
+                resetStat("statistics.txt");
+                break;
+            case 4:
                 printf("Zakończono program.\n");
                 return;
             default:
                 printf("Nieprawidłowy wybór!\n");
-            }
         }
-
     }
-
+}
 
     
     void startGame() {
@@ -68,7 +74,8 @@ void addPlayer(const char *filename, Player *player);
         game(&player1, &player2); // rozpoczynamy właściową grę
 
         // po grze musimy zapisać/ nadpisać wyniki do pliku
-        //updateStat();
+        updateStat(filename, &player1);
+        updateStat(filename, &player2);
 
 
     }
@@ -206,7 +213,61 @@ void addPlayer(const char *filename,Player *player) {
     fprintf(plik, "%s %d %d %d\n", (*player).name, (*player).win, (*player).lose, (*player).draw); // dopisujemy do pliku
     fclose(plik);
 }
+void showStatistics(const char *filename) {
+    FILE *plik = fopen(filename, "r");
+    if (!plik) {
+        perror("Błąd odczytu pliku");
+        return;
+    }
 
+    Player p;
+    printf("Statystyki graczy:\n");
+    printf("%-20s | Wygrane | Przegrane | Remisy\n", "Nick");
+    printf("---------------------------------------------\n");
+    char line[100];
+    while (fgets(line, sizeof(line), plik)) {
+        if (sscanf(line, "%s %d %d %d", p.name, &p.win, &p.lose, &p.draw) == 4) {
+            printf("%-20s | %7d | %9d | %6d\n", p.name, p.win, p.lose, p.draw);
+        }
+    }
+
+    fclose(plik);
+}
+void updateStat(const char *filename, Player *player) {
+    FILE *plik = fopen(filename, "r");
+    FILE *tmp = fopen("temp.txt", "w");
+    if (!plik || !tmp) {
+        perror("Błąd podczas otwierania plików");
+        return;
+    }
+
+    char linia[100];
+    while (fgets(linia, sizeof(linia), plik)) {
+        Player tmpPlayer;
+        if (sscanf(linia, "%s %d %d %d", tmpPlayer.name, &tmpPlayer.win, &tmpPlayer.lose, &tmpPlayer.draw) == 4) {
+            if (strcmp(tmpPlayer.name, player->name) == 0) {
+                fprintf(tmp, "%s %d %d %d\n", player->name, player->win, player->lose, player->draw);
+            } else {
+                fprintf(tmp, "%s %d %d %d\n", tmpPlayer.name, tmpPlayer.win, tmpPlayer.lose, tmpPlayer.draw);
+            }
+        }
+    }
+
+    fclose(plik);
+    fclose(tmp);
+
+    remove(filename);
+    rename("temp.txt", filename);
+}
+void resetStat(const char *filename) {
+    FILE *plik = fopen(filename, "w");
+    if (!plik) {
+        perror("Nie można otworzyć pliku do resetu");
+        return;
+    }
+    fclose(plik);
+    printf("Statystyki zostały zresetowane.\n");
+}
     
 int main() {
     menu();
