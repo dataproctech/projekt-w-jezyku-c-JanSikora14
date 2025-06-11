@@ -1,1 +1,214 @@
-#include "game.h"
+#include <stdio.h>
+#include <string.h>
+#include "../include/game.h"
+
+void startGame() {
+    const char *filename = "statistics.txt";
+    Player player1, player2;
+
+    printf("Podaj nick gracza 1: ");
+    fgets(player1.name, 50, stdin);
+    player1.name[strcspn(player1.name, "\n")] = 0;
+
+    if (!findPlayer(filename, player1.name, &player1)) {
+        player1.win = player1.lose = player1.draw = 0;
+        addPlayer(filename, &player1);
+    }
+
+    printf("Podaj nick gracza 2: ");
+    fgets(player2.name, 50, stdin);
+    player2.name[strcspn(player2.name, "\n")] = 0;
+
+    if (!findPlayer(filename, player2.name, &player2)) {
+        player2.win = player2.lose = player2.draw = 0;
+        addPlayer(filename, &player2);
+    }
+
+    game(&player1, &player2);
+
+    updateStat(filename, &player1);
+    updateStat(filename, &player2);
+}
+
+void game(Player *player1, Player *player2) {
+    player1->symbol = 'X';
+    player2->symbol = 'O';
+
+    char board[3][3] = {
+        {' ', ' ', ' '},
+        {' ', ' ', ' '},
+        {' ', ' ', ' '}
+    };
+    char tutorialBoard[3][3] = {
+        {'1', '2', '3'},
+        {'4', '5', '6'},
+        {'7', '8', '9'}
+    };
+
+    printBoard(tutorialBoard);
+
+    while (1) {
+        printf("Tura gracza %s\n", player1->name);
+        printBoard(board);
+
+        int choice, row, col;
+        printf("Podaj komórkę (1-9): ");
+        scanf("%d", &choice);
+        getchar();
+        choice--;
+        row = choice / 3;
+        col = choice % 3;
+
+        if (row < 0 || row > 2 || col < 0 || col > 2 || board[row][col] != ' ') {
+            printf("Nieprawidłowy ruch! Spróbuj ponownie.\n");
+            continue;
+        }
+
+        board[row][col] = player1->symbol;
+        printBoard(board);
+
+        if (checkWin(board)) {
+            printf("Gratulacje! Gracz %s wygrał!\n", player1->name);
+            player1->win++;
+            player2->lose++;
+            break;
+        }
+
+        if (checkDraw(board)) {
+            printf("Remis!\n");
+            player1->draw++;
+            player2->draw++;
+            break;
+        }
+
+        // Zamiana graczy
+        Player *temp = player1;
+        player1 = player2;
+        player2 = temp;
+    }
+}
+
+void printBoard(char board[3][3]) {
+    printf("\n  1 2 3\n");
+    for (int i = 0; i < 3; i++) {
+        printf("%d ", i + 1);
+        for (int j = 0; j < 3; j++) {
+            printf("%c", board[i][j]);
+            if (j < 2) printf("|");
+        }
+        if (i < 2) printf("\n  -+-+-\n");
+    }
+    printf("\n");
+}
+
+int checkWin(char board[3][3]) {
+    for (int i = 0; i < 3; i++) {
+        if (board[i][0] != ' ' &&
+            board[i][0] == board[i][1] &&
+            board[i][1] == board[i][2]) return 1;
+
+        if (board[0][i] != ' ' &&
+            board[0][i] == board[1][i] &&
+            board[1][i] == board[2][i]) return 1;
+    }
+
+    if (board[0][0] != ' ' &&
+        board[0][0] == board[1][1] &&
+        board[1][1] == board[2][2]) return 1;
+
+    if (board[0][2] != ' ' &&
+        board[0][2] == board[1][1] &&
+        board[1][1] == board[2][0]) return 1;
+
+    return 0;
+}
+
+int checkDraw(char board[3][3]) {
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+            if (board[i][j] == ' ')
+                return 0;
+    return 1;
+}
+
+int findPlayer(const char *filename, const char *szukany_nick, Player *player) {
+    FILE *plik = fopen(filename, "r");
+    if (!plik) return 0;
+
+    char linia[100];
+    while (fgets(linia, sizeof(linia), plik)) {
+        Player tmp;
+        if (sscanf(linia, "%s %d %d %d", tmp.name, &tmp.win, &tmp.lose, &tmp.draw) == 4) {
+            if (strcmp(tmp.name, szukany_nick) == 0) {
+                *player = tmp;
+                fclose(plik);
+                return 1;
+            }
+        }
+    }
+
+    fclose(plik);
+    return 0;
+}
+
+void addPlayer(const char *filename, Player *player) {
+    FILE *plik = fopen(filename, "a");
+    if (!plik) return;
+
+    fprintf(plik, "%s %d %d %d\n", player->name, player->win, player->lose, player->draw);
+    fclose(plik);
+}
+
+void showStatistics(const char *filename) {
+    FILE *plik = fopen(filename, "r");
+    if (!plik) {
+        perror("Błąd odczytu pliku");
+        return;
+    }
+
+    Player p;
+    printf("Statystyki graczy:\n");
+    printf("%-20s | Wygrane | Przegrane | Remisy\n", "Nick");
+    printf("---------------------------------------------\n");
+
+    char line[100];
+    while (fgets(line, sizeof(line), plik)) {
+        if (sscanf(line, "%s %d %d %d", p.name, &p.win, &p.lose, &p.draw) == 4) {
+            printf("%-20s | %7d | %9d | %6d\n", p.name, p.win, p.lose, p.draw);
+        }
+    }
+
+    fclose(plik);
+}
+
+void updateStat(const char *filename, Player *player) {
+    FILE *plik = fopen(filename, "r");
+    FILE *tmp = fopen("temp.txt", "w");
+    if (!plik || !tmp) return;
+
+    char linia[100];
+    while (fgets(linia, sizeof(linia), plik)) {
+        Player tmpPlayer;
+        if (sscanf(linia, "%s %d %d %d", tmpPlayer.name, &tmpPlayer.win, &tmpPlayer.lose, &tmpPlayer.draw) == 4) {
+            if (strcmp(tmpPlayer.name, player->name) == 0) {
+                fprintf(tmp, "%s %d %d %d\n", player->name, player->win, player->lose, player->draw);
+            } else {
+                fprintf(tmp, "%s %d %d %d\n", tmpPlayer.name, tmpPlayer.win, tmpPlayer.lose, tmpPlayer.draw);
+            }
+        }
+    }
+
+    fclose(plik);
+    fclose(tmp);
+
+    remove(filename);
+    rename("temp.txt", filename);
+}
+
+void resetStat(const char *filename) {
+    FILE *plik = fopen(filename, "w");
+    if (plik) {
+        fclose(plik);
+        printf("Statystyki zostały zresetowane.\n");
+    }
+}
